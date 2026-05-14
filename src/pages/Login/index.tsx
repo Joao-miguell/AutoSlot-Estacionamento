@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import logoUrl from '../../images/Logo.png';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -36,7 +37,7 @@ export default function Login() {
     <div className="login-wrapper">
       <div className="login-card" style={{ textAlign: 'center' }}>
   <img
-    src="src/images/Logo.png"
+    src={logoUrl}
     alt="AutoSlot Logo"
     style={{
       width: '140px',
