@@ -15,6 +15,8 @@ import NotFound from './pages/NotFound';
 // NOVOS COMPONENTES (O QUE ESTAVA FALTANDO)
 import CheckIn from './pages/CheckIn';
 import Placeholder from './pages/PlaceholderPage'; // Importando PlaceholderPage como "Placeholder"
+import './index.css';
+
 
 function App() {
   return (

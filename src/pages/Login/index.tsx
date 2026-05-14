@@ -34,6 +34,7 @@ export default function Login() {
   };
 
   return (
+    
     <div className="login-wrapper">
       <div className="login-card" style={{ textAlign: 'center' }}>
   <img
@@ -52,18 +53,18 @@ export default function Login() {
         {erro && <div className="alert alert-error" style={{margin: '10px 0'}}>{erro}</div>}
         <form onSubmit={handleLogin}>
           <div className="field">
-            <label>Login</label>
+            <label style={{ textAlign: 'left' }}>Login</label> 
             <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="E-mail" />
           </div>
           <div className="field">
-            <label>Senha</label>
-            <input type="password" value={senha} onChange={e => setSenha(e.target.value)} placeholder="••••" />
+            <label style={{ textAlign: 'left' }}>Senha</label>
+            <input type="password" value={senha} onChange={e => setSenha(e.target.value)} placeholder="••••••" />
           </div>
           <button type="submit" className="btn-primary" disabled={loading}>
             {loading ? 'Carregando...' : 'Entrar'}
           </button>
         </form>
-        <div style={{marginTop: '20px', fontSize: '11px', color: '#666'}}>
+        <div style={{marginTop: '20px', fontSize: '11px', color: '#666', textAlign: 'left'}}>
           Admin: admin@estacionamento.com / admin123 <br/>
           Func: func@estacionamento.com / func123
         </div>
