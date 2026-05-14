@@ -34,8 +34,19 @@ export default function Login() {
 
   return (
     <div className="login-wrapper">
-      <div className="login-card">
-        <h1>AutoSlot</h1>
+      <div className="login-card" style={{ textAlign: 'center' }}>
+  <img
+    src="src/images/Logo.png"
+    alt="AutoSlot Logo"
+    style={{
+      width: '140px',
+      height: '140px',
+      margin: '0 auto 20px auto',
+      display: 'block'
+    }}
+  />
+
+  <h1 style={{ marginBottom: '10px' }}>AutoSlot</h1>
         <p>Acesse com seu perfil</p>
         {erro && <div className="alert alert-error" style={{margin: '10px 0'}}>{erro}</div>}
         <form onSubmit={handleLogin}>
