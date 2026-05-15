@@ -45,7 +45,7 @@ body.dark .mensagem-erro {
 }
 .btn-tema {
   background: transparent; 
-  border-radius: 50%;
+  border: none;
   width: 44px;
   height: 44px;
   font-size: 1.25rem;
