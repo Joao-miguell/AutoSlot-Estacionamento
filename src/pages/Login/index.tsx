@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import logoUrl from '../../images/Logo.png';
-// Importe as imagens no topo do arquivo
 import solUrl from '../../images/sol.png';
 import luaUrl from '../../images/lua.png';
 
@@ -17,10 +16,12 @@ export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const alternarTema = () => {                              // ← novo
-    const novoTema = !temaEscuro;
-    setTemaEscuro(novoTema);
-    document.body.classList.toggle('dark', novoTema);
+  useEffect(() => {
+    document.body.classList.toggle('dark', temaEscuro);
+  }, [temaEscuro]);
+
+  const alternarTema = () => {
+    setTemaEscuro(prev => !prev); // ← usa função para garantir valor atual
   };
 
   const handleLogin = (e: React.FormEvent) => {
@@ -48,12 +49,12 @@ export default function Login() {
     <>
       <div className="Botão-tema">
   <button className="btn-tema" onClick={alternarTema}>
-    <img
-      src={temaEscuro ? solUrl : luaUrl}
-      alt={temaEscuro ? 'Tema claro' : 'Tema escuro'}
-      style={{ width: '24px', height: '24px' }}
-    />
-  </button>
+  <img
+    src={temaEscuro ? luaUrl : solUrl}
+    alt={temaEscuro ? 'Mudar para claro' : 'Mudar para escuro'}
+    style={{ width: '24px', height: '24px' }}
+  />
+</button>
 </div>
 
       <div className="login-wrapper">
@@ -73,7 +74,7 @@ export default function Login() {
             </div>
             <div className="field">
               <label style={{ textAlign: 'left' }}>Senha</label>
-              <input type="password" value={senha} onChange={e => setSenha(e.target.value)} placeholder="••••••" />
+              <input type="password" value={senha} onChange={e => setSenha(e.target.value)} placeholder="Senha" />
             </div>
             <button type="submit" className="btn-primary" disabled={loading}>
               {loading ? 'Carregando...' : 'Entrar'}
