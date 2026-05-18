@@ -22,8 +22,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
     <div className="shell">
       <aside className="sidebar">
         <div className="brand">
-          <div className="logo-mark">P</div>
-          <div>
+          <img className="logo-mark" src="src\images\Logo.png"/> <div>
             <strong>Parking ERP</strong>
             <span>Controle interno</span>
           </div>
@@ -44,10 +43,6 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
           )}
         </nav>
 
-        <div className="ux-card">
-          <strong>Regra UX</strong>
-          <p>Registrar entrada, alterar status e registrar saída em até 4 cliques.</p>
-        </div>
       </aside>
 
       <main className="content">

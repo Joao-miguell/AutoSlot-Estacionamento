@@ -112,16 +112,14 @@ input::placeholder { color: var(--muted-2); }
 html[data-theme="light"] .login-card { background: rgba(255,255,255,.94); }
 
 .logo-mark {
-  width: 54px;
-  height: 54px;
+  width: 60px;
+  height: 60px;
   border-radius: 16px;
   display: grid;
   place-items: center;
-  background: linear-gradient(135deg, #22c55e, #14b8a6);
   color: #06151a;
   font-size: 24px;
   font-weight: 950;
-  box-shadow: 0 14px 28px rgba(20,184,166,.22);
   flex: 0 0 auto;
 }
 .login-logo { width: 62px; height: 62px; margin-bottom: 18px; color: white; }
