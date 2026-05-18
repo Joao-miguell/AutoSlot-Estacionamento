@@ -1,33 +1,25 @@
-// src/auth/ThemeContext.tsx
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
-interface ThemeContextType {
+type ThemeContextType = {
   temaEscuro: boolean;
   alternarTema: () => void;
-}
+};
 
 const ThemeContext = createContext<ThemeContextType>({
   temaEscuro: true,
-  alternarTema: () => {},
+  alternarTema: () => undefined,
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  // Lê preferência salva (ou inicia escuro)
-  const [temaEscuro, setTemaEscuro] = useState<boolean>(() => {
-    const salvo = localStorage.getItem('autoslot-tema');
-    return salvo !== null ? salvo === 'escuro' : true;
-  });
+  const [temaEscuro, setTemaEscuro] = useState(() => localStorage.getItem('autoslot-tema') !== 'claro');
 
-  // Sincroniza classe no body e salva no localStorage
   useEffect(() => {
-    document.body.classList.toggle('dark', temaEscuro);
+    document.documentElement.dataset.theme = temaEscuro ? 'dark' : 'light';
     localStorage.setItem('autoslot-tema', temaEscuro ? 'escuro' : 'claro');
   }, [temaEscuro]);
 
-  const alternarTema = () => setTemaEscuro(prev => !prev);
-
   return (
-    <ThemeContext.Provider value={{ temaEscuro, alternarTema }}>
+    <ThemeContext.Provider value={{ temaEscuro, alternarTema: () => setTemaEscuro(value => !value) }}>
       {children}
     </ThemeContext.Provider>
   );

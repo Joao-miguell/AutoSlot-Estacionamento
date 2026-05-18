@@ -1,190 +1,209 @@
 import React, { useMemo, useState } from 'react';
+import { useParking, ParkingSpot } from '../../context/ParkingContext';
+import { dataHora, duracao, moeda, toDateTimeLocal } from '../../utils';
 
-type Status = 'Livre' | 'Reservada' | 'Ocupada' | 'Expirada';
-
-type Vaga = {
-  codigo: string;
-  status: Status;
-  placa?: string;
-  cliente?: string;
-  entrada?: string;
-  saida?: string;
-  tempo?: string;
-  modelo?: string;
-};
-
-const vagasIniciais: Vaga[] = [
-  { codigo: 'A01', status: 'Livre' },
-  { codigo: 'A02', status: 'Reservada', placa: 'AXD-1234', cliente: 'Carlos Lima', entrada: '10/04/2026, 13:40', tempo: '0h 18min', modelo: 'HB20' },
-  { codigo: 'A03', status: 'Ocupada', placa: 'CPF-9087', cliente: 'Marina Souza', entrada: '10/04/2026, 11:40', tempo: '2h 28min', modelo: 'Corolla' },
-  { codigo: 'A04', status: 'Expirada', placa: 'BRA-2026', cliente: 'Bruno Rocha', entrada: '10/04/2026, 12:20', saida: '10/04/2026, 13:35', tempo: '1h 52min', modelo: 'Gol' },
-  { codigo: 'B01', status: 'Livre' },
-  { codigo: 'B02', status: 'Ocupada', placa: 'PKL-4065', cliente: 'Patrícia Dias', entrada: '10/04/2026, 11:44', tempo: '0h 45min', modelo: 'Onix' },
-  { codigo: 'B03', status: 'Reservada', placa: 'KWE-1102', cliente: 'Eduardo Ferreira', entrada: '10/04/2026, 12:15', tempo: '0h 50min', modelo: 'Sandero' },
-  { codigo: 'B04', status: 'Livre' }
-];
-
-const statusClass: Record<Status, string> = {
+type Modal = 'reserva' | 'detalhes' | 'pagamento' | null;
+const statusClass: Record<ParkingSpot['status'], string> = {
   Livre: 'free',
   Reservada: 'reserved',
-  Ocupada: 'busy',
-  Expirada: 'expired'
+  Ocupada: 'occupied',
+  Expirada: 'expired',
+  Inativa: 'inactive'
 };
 
 export default function Dashboard() {
-  const [vagas, setVagas] = useState<Vaga[]>(vagasIniciais);
-  const [reservaAberta, setReservaAberta] = useState(false);
-  const [vagaSelecionada, setVagaSelecionada] = useState<Vaga | null>(null);
-  const [pagamentoAberto, setPagamentoAberto] = useState(false);
+  const { vagas, metricas, reservar, marcarChegada, cancelarReservaExpirada, finalizarPagamento, calcularTempo, calcularValor } = useParking();
+  const [busca, setBusca] = useState('');
+  const [modal, setModal] = useState<Modal>(null);
+  const [vagaSelecionada, setVagaSelecionada] = useState<ParkingSpot | null>(null);
+  const [pagamento, setPagamento] = useState<'Dinheiro' | 'PIX' | 'Cartão'>('Dinheiro');
+  const [erroReserva, setErroReserva] = useState('');
+  const [form, setForm] = useState({
+    cliente: '',
+    placa: '',
+    modelo: '',
+    entrada: toDateTimeLocal(new Date()),
+    saidaPrevista: toDateTimeLocal(new Date(Date.now() + 60 * 60 * 1000)),
+    vagaId: 0
+  });
 
-  const totais = useMemo(() => ({
-    livres: vagas.filter(v => v.status === 'Livre').length,
-    ocupadas: vagas.filter(v => v.status === 'Ocupada').length,
-    reservadas: vagas.filter(v => v.status === 'Reservada').length,
-    faturamento: 72
-  }), [vagas]);
+  const vagasFiltradas = useMemo(() => {
+    const termo = busca.trim().toLowerCase();
+    if (!termo) return vagas;
+    return vagas.filter(vaga =>
+      vaga.codigo.toLowerCase().includes(termo) ||
+      (vaga.placa ?? '').toLowerCase().includes(termo) ||
+      (vaga.cliente ?? '').toLowerCase().includes(termo)
+    );
+  }, [busca, vagas]);
 
-  const informarChegada = (vaga: Vaga) => {
-    setVagas(atual => atual.map(item => item.codigo === vaga.codigo ? { ...item, status: 'Ocupada', entrada: '10/04/2026, 14:40', tempo: '0h 01min' } : item));
-    setVagaSelecionada(null);
+  const vagasLivres = vagas.filter(vaga => vaga.status === 'Livre');
+
+  const abrirReserva = () => {
+    const primeiraLivre = vagasLivres[0];
+    setErroReserva(primeiraLivre ? '' : 'Não há vagas livres disponíveis.');
+    setForm({
+      cliente: '',
+      placa: '',
+      modelo: '',
+      entrada: toDateTimeLocal(new Date()),
+      saidaPrevista: toDateTimeLocal(new Date(Date.now() + 60 * 60 * 1000)),
+      vagaId: primeiraLivre?.id ?? 0
+    });
+    setModal('reserva');
   };
 
-  const finalizarSaida = (vaga: Vaga) => {
+  const abrirDetalhes = (vaga: ParkingSpot) => {
+    if (vaga.status === 'Livre' || vaga.status === 'Inativa') return;
     setVagaSelecionada(vaga);
-    setPagamentoAberto(true);
+    setModal('detalhes');
   };
 
-  const liberarVaga = () => {
+  const confirmarReserva = () => {
+    if (!form.placa.trim()) {
+      setErroReserva('A placa do veículo é obrigatória.');
+      return;
+    }
+    if (!form.vagaId) {
+      setErroReserva('Selecione uma vaga livre.');
+      return;
+    }
+    reservar(form);
+    setModal(null);
+  };
+
+  const confirmarPagamento = () => {
     if (!vagaSelecionada) return;
-    setVagas(atual => atual.map(item => item.codigo === vagaSelecionada.codigo ? { codigo: item.codigo, status: 'Livre' } : item));
-    setPagamentoAberto(false);
+    finalizarPagamento(vagaSelecionada.id, pagamento);
+    setModal(null);
     setVagaSelecionada(null);
   };
 
   return (
     <>
-      <div className="metric-grid">
-        <article className="metric-card">
-          <span>Faturamento acumulado do dia</span>
-          <strong>R$ {totais.faturamento},00</strong>
-          <small>Receita consolidada de domingo</small>
-        </article>
-        <article className="metric-card">
-          <span>Vagas Livres</span>
-          <strong>{totais.livres}</strong>
-          <small>Disponíveis para reserva</small>
-        </article>
-        <article className="metric-card">
-          <span>Vagas Ocupadas</span>
-          <strong>{totais.ocupadas}</strong>
-          <small>Em atendimento agora</small>
-        </article>
-        <article className="metric-card">
-          <span>Ticket médio</span>
-          <strong>R$ 24,00</strong>
-          <small>Valor por atendimento</small>
-        </article>
+      <div className="dashboard-toolbar">
+        <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar por placa, cliente ou vaga" />
       </div>
 
-      <div className="section-heading">
+      <div className="cards">
+        <Metric label="Faturamento acumulado do dia" value={moeda(metricas.faturamento)} foot="Receita consolidada do turno/dia" />
+        <Metric label="Vagas Livres" value={metricas.livres} foot="Disponíveis para reserva" />
+        <Metric label="Vagas Ocupadas" value={metricas.ocupadas} foot="Em atendimento agora" />
+        <Metric label="Ticket médio" value={moeda(metricas.ticketMedio)} foot="Média por atendimento" />
+      </div>
+
+      <div className="page-title card">
         <div>
           <h2>Mapa de Vagas</h2>
           <p>Cards clicáveis com status, placa, horário e alerta de permanência.</p>
         </div>
-        <span>Desktop e tablet em modo paisagem</span>
+        <span>Dashboard com reservas, check-in e check-out</span>
       </div>
 
-      <div className="parking-grid">
-        {vagas.map(vaga => (
-          <button
-            key={vaga.codigo}
-            className={`parking-card ${statusClass[vaga.status]}`}
-            onClick={() => setVagaSelecionada(vaga)}
-          >
-            <div className="parking-head">
-              <strong>Vaga {vaga.codigo}</strong>
-              <span>{vaga.status}</span>
-            </div>
-            {vaga.placa ? (
-              <div className="parking-info">
-                <p>Placa: {vaga.placa}</p>
-                <p>Entrada: {vaga.entrada}</p>
-                <p>Tempo: {vaga.tempo}</p>
-              </div>
-            ) : (
-              <p className="parking-info">Disponível para nova reserva</p>
-            )}
-            {vaga.status === 'Expirada' && <em>⚠</em>}
-          </button>
-        ))}
+      <div className="lot-grid">
+        {vagasFiltradas.map(vaga => {
+          const tempo = calcularTempo(vaga.entrada);
+          const atrasada = vaga.status === 'Ocupada' && vaga.saidaPrevista && new Date(vaga.saidaPrevista) < new Date();
+          return (
+            <button key={vaga.id} className={`spot ${statusClass[vaga.status]}`} onClick={() => abrirDetalhes(vaga)}>
+              <span className="badge">{vaga.status}</span>
+              <h3>Vaga {vaga.codigo}</h3>
+              {vaga.status === 'Livre' ? (
+                <p>Disponível para nova reserva</p>
+              ) : vaga.status === 'Inativa' ? (
+                <p>Vaga desativada nas configurações</p>
+              ) : (
+                <div>
+                  <p><strong>Placa:</strong> {vaga.placa}</p>
+                  <p><strong>Entrada:</strong> {dataHora(vaga.entrada)}</p>
+                  <p><strong>Tempo:</strong> {duracao(tempo)}</p>
+                </div>
+              )}
+              {(atrasada || vaga.status === 'Expirada') && <em>⚠️</em>}
+            </button>
+          );
+        })}
       </div>
 
-      <button className="floating-action" onClick={() => setReservaAberta(true)}>+ Nova Reserva</button>
+      <button className="btn btn-primary fab" onClick={abrirReserva}>+ Nova Reserva</button>
 
-      {reservaAberta && (
-        <div className="modal-backdrop">
-          <div className="modal-card reservation-modal">
-            <h3>Nova Reserva</h3>
-            <p>Somente vagas livres podem ser selecionadas.</p>
-            <div className="form-grid">
-              <label>Nome do cliente<input placeholder="Ex: João Silva" /></label>
-              <label>Placa do veículo<input placeholder="Ex: ABC-1234" /></label>
-              <label>Modelo do veículo<input placeholder="Ex: Onix" /></label>
-              <label>Horário de entrada<input type="datetime-local" /></label>
-              <label>Horário previsto de saída<input type="datetime-local" /></label>
-              <label>Seleção de vaga<select defaultValue="A01"><option>A01</option><option>B01</option><option>B04</option></select></label>
-            </div>
-            <div className="modal-actions">
-              <button className="ghost-button" onClick={() => setReservaAberta(false)}>Cancelar</button>
-              <button className="success-button" onClick={() => setReservaAberta(false)}>Confirmar Reserva</button>
-            </div>
+      {modal === 'reserva' && (
+        <Modal title="Nova Reserva" subtitle="Somente vagas livres podem ser selecionadas." onClose={() => setModal(null)}>
+          <div className="row row-2">
+            <Field label="Nome do cliente"><input value={form.cliente} onChange={e => setForm({ ...form, cliente: e.target.value })} placeholder="Ex.: João Silva" /></Field>
+            <Field label="Placa do veículo *"><input value={form.placa} onChange={e => setForm({ ...form, placa: e.target.value.toUpperCase() })} placeholder="ABC-1234" /></Field>
+            <Field label="Modelo do veículo"><input value={form.modelo} onChange={e => setForm({ ...form, modelo: e.target.value })} placeholder="Ex.: Onix" /></Field>
+            <Field label="Horário de entrada"><input type="datetime-local" value={form.entrada} onChange={e => setForm({ ...form, entrada: e.target.value })} /></Field>
+            <Field label="Horário previsto de saída"><input type="datetime-local" value={form.saidaPrevista} onChange={e => setForm({ ...form, saidaPrevista: e.target.value })} /></Field>
+            <Field label="Seleção de vaga">
+              <select value={form.vagaId} onChange={e => setForm({ ...form, vagaId: Number(e.target.value) })}>
+                {vagasLivres.map(vaga => <option key={vaga.id} value={vaga.id}>{vaga.codigo}</option>)}
+              </select>
+            </Field>
           </div>
-        </div>
+          {erroReserva && <div className="error-box">{erroReserva}</div>}
+          <div className="modal-footer">
+            <button className="btn btn-ghost" onClick={() => setModal(null)}>Cancelar</button>
+            <button className="btn btn-primary" onClick={confirmarReserva}>Confirmar Reserva</button>
+          </div>
+        </Modal>
       )}
 
-      {vagaSelecionada && !pagamentoAberto && (
-        <div className="modal-backdrop">
-          <div className="modal-card">
-            <h3>Detalhes da Vaga {vagaSelecionada.codigo}</h3>
-            <p>Status atual: {vagaSelecionada.status}</p>
-            <div className="detail-grid">
-              <span>Placa<strong>{vagaSelecionada.placa ?? '-'}</strong></span>
-              <span>Modelo<strong>{vagaSelecionada.modelo ?? '-'}</strong></span>
-              <span>Cliente<strong>{vagaSelecionada.cliente ?? '-'}</strong></span>
-              <span>Horário de entrada<strong>{vagaSelecionada.entrada ?? '-'}</strong></span>
-              <span>Horário previsto de saída<strong>{vagaSelecionada.saida ?? '-'}</strong></span>
-              <span>Tempo corrido<strong>{vagaSelecionada.tempo ?? '-'}</strong></span>
-            </div>
-            <div className="modal-actions">
-              <button className="ghost-button" onClick={() => setVagaSelecionada(null)}>Fechar</button>
-              {vagaSelecionada.status === 'Reservada' && <button className="warning-button" onClick={() => informarChegada(vagaSelecionada)}>Cliente Chegou</button>}
-              {vagaSelecionada.status === 'Ocupada' && <button className="success-button" onClick={() => finalizarSaida(vagaSelecionada)}>Informar Saída</button>}
-              {vagaSelecionada.status === 'Expirada' && <button className="danger-button" onClick={() => finalizarSaida(vagaSelecionada)}>Cancelar Reserva Expirada</button>}
-            </div>
+      {modal === 'detalhes' && vagaSelecionada && (
+        <Modal title={`Detalhes da Vaga ${vagaSelecionada.codigo}`} subtitle={`Status atual: ${vagaSelecionada.status}`} onClose={() => setModal(null)}>
+          <div className="detail-list">
+            <Detail label="Placa" value={vagaSelecionada.placa ?? '-'} />
+            <Detail label="Modelo" value={vagaSelecionada.modelo ?? '-'} />
+            <Detail label="Cliente" value={vagaSelecionada.cliente ?? '-'} />
+            <Detail label="Horário de entrada" value={dataHora(vagaSelecionada.entrada)} />
+            <Detail label="Horário previsto de saída" value={dataHora(vagaSelecionada.saidaPrevista)} />
+            <Detail label="Tempo corrido" value={duracao(calcularTempo(vagaSelecionada.entrada))} />
           </div>
-        </div>
+          <div className="modal-footer">
+            <button className="btn btn-ghost" onClick={() => setModal(null)}>Fechar</button>
+            {vagaSelecionada.status === 'Reservada' && <button className="btn btn-warning" onClick={() => { marcarChegada(vagaSelecionada.id); setModal(null); }}>Cliente Chegou</button>}
+            {vagaSelecionada.status === 'Ocupada' && <button className="btn btn-primary" onClick={() => setModal('pagamento')}>Informar Saída</button>}
+            {vagaSelecionada.status === 'Expirada' && <button className="btn btn-danger" onClick={() => { cancelarReservaExpirada(vagaSelecionada.id); setModal(null); }}>Cancelar Reserva Expirada</button>}
+          </div>
+        </Modal>
       )}
 
-      {pagamentoAberto && vagaSelecionada && (
-        <div className="modal-backdrop">
-          <div className="modal-card payment-modal">
-            <h3>Finalizar Atendimento / Pagamento</h3>
-            <p>A vaga só volta a livre após confirmação do pagamento.</p>
-            <div className="detail-grid compact">
-              <span>Horário de entrada<strong>{vagaSelecionada.entrada}</strong></span>
-              <span>Horário de saída<strong>10/04/2026, 14:21</strong></span>
-              <span>Tempo total<strong>2h 41min</strong></span>
-              <span>Vaga<strong>{vagaSelecionada.codigo}</strong></span>
-            </div>
-            <div className="total-box"><small>Valor calculado</small><strong>R$ 36,00</strong></div>
-            <label className="payment-select">Forma de Pagamento<select defaultValue="Dinheiro"><option>Dinheiro</option><option>PIX</option><option>Cartão</option></select></label>
-            <div className="modal-actions">
-              <button className="ghost-button" onClick={() => setPagamentoAberto(false)}>Voltar</button>
-              <button className="success-button" onClick={liberarVaga}>Confirmar Pagamento e Liberar Vaga</button>
-            </div>
+      {modal === 'pagamento' && vagaSelecionada && (
+        <Modal title="Finalizar Atendimento / Pagamento" subtitle="A vaga só volta a livre após confirmação do pagamento." onClose={() => setModal('detalhes')}>
+          <div className="detail-list">
+            <Detail label="Horário de entrada" value={dataHora(vagaSelecionada.entrada)} />
+            <Detail label="Horário de saída" value={dataHora(new Date().toISOString())} />
+            <Detail label="Tempo total de permanência" value={duracao(calcularTempo(vagaSelecionada.entrada))} />
+            <Detail label="Vaga" value={vagaSelecionada.codigo} />
           </div>
-        </div>
+          <div className="pay-highlight"><span>Valor calculado</span><strong>{moeda(calcularValor(vagaSelecionada.entrada))}</strong></div>
+          <Field label="Forma de Pagamento">
+            <select value={pagamento} onChange={e => setPagamento(e.target.value as typeof pagamento)}>
+              <option>Dinheiro</option><option>PIX</option><option>Cartão</option>
+            </select>
+          </Field>
+          <div className="modal-footer">
+            <button className="btn btn-ghost" onClick={() => setModal('detalhes')}>Voltar</button>
+            <button className="btn btn-primary" onClick={confirmarPagamento}>Confirmar Pagamento e Liberar Vaga</button>
+          </div>
+        </Modal>
       )}
     </>
   );
+}
+
+function Metric({ label, value, foot }: { label: string; value: React.ReactNode; foot: string }) {
+  return <article className="card metric"><span>{label}</span><strong>{value}</strong><small>{foot}</small></article>;
+}
+
+function Modal({ title, subtitle, children, onClose }: { title: string; subtitle?: string; children: React.ReactNode; onClose: () => void }) {
+  return <div className="modal-backdrop" onMouseDown={e => e.currentTarget === e.target && onClose()}><section className="modal"><div className="modal-header"><h3>{title}</h3>{subtitle && <p>{subtitle}</p>}</div><div className="modal-body">{children}</div></section></div>;
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return <label className="field"><span>{label}</span>{children}</label>;
+}
+
+function Detail({ label, value }: { label: string; value: React.ReactNode }) {
+  return <div className="detail-item"><span>{label}</span><strong>{value}</strong></div>;
 }

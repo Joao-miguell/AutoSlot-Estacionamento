@@ -1,33 +1,60 @@
-import React from 'react';
-
-const vagas = ['A01', 'A02', 'A03', 'A04', 'B01', 'B02', 'B03', 'B04'];
-const status = ['Livre', 'Reservada', 'Ocupada', 'Expirada', 'Livre', 'Ocupada', 'Reservada', 'Livre'];
+import React, { useState } from 'react';
+import { useParking } from '../../context/ParkingContext';
 
 export default function Configuracoes() {
+  const { vagas, configuracoes, adicionarVaga, editarVaga, inativarVaga, salvarConfiguracoes } = useParking();
+  const [valorHora, setValorHora] = useState(String(configuracoes.valorHora));
+  const [tolerancia, setTolerancia] = useState(String(configuracoes.toleranciaMinutos));
+
+  const salvar = () => {
+    salvarConfiguracoes({ valorHora: Number(valorHora) || 0, toleranciaMinutos: Number(tolerancia) || 0 });
+    alert('Tarifas salvas com sucesso.');
+  };
+
+  const editar = (id: number, codigoAtual: string) => {
+    const novoCodigo = prompt('Editar identificação da vaga:', codigoAtual);
+    if (novoCodigo?.trim()) editarVaga(id, novoCodigo.trim());
+  };
+
   return (
-    <div>
-      <div className="page-heading">
-        <h2>Configurações</h2>
-        <p>Acesso exclusivo do administrador.</p>
+    <section>
+      <div className="page-title card">
+        <div>
+          <h2>Configurações</h2>
+          <p>Acesso exclusivo do administrador.</p>
+        </div>
       </div>
 
       <div className="settings-grid">
-        <section className="table-card settings-panel">
+        <section className="card settings-panel">
           <h3>Aba Vagas</h3>
-          <table>
-            <thead><tr><th>Vaga</th><th>Status</th><th>Ação</th></tr></thead>
-            <tbody>{vagas.map((vaga, index) => <tr key={vaga}><td>{vaga}</td><td>{status[index]}</td><td><button className="ghost-button mini">Editar</button><button className="danger-button mini">Inativar</button></td></tr>)}</tbody>
-          </table>
-          <button className="success-button mini">Adicionar vaga</button>
+          <div className="table-scroll">
+            <table>
+              <thead><tr><th>Vaga</th><th>Status</th><th>Ação</th></tr></thead>
+              <tbody>
+                {vagas.map(vaga => (
+                  <tr key={vaga.id}>
+                    <td>{vaga.codigo}</td>
+                    <td>{vaga.status}</td>
+                    <td>
+                      <button className="btn btn-ghost mini" onClick={() => editar(vaga.id, vaga.codigo)}>Editar</button>
+                      <button className="btn btn-danger mini" onClick={() => inativarVaga(vaga.id)}>Inativar</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <button className="btn btn-primary mini-action" onClick={adicionarVaga}>Adicionar vaga</button>
         </section>
 
-        <section className="settings-panel">
+        <section className="card settings-panel">
           <h3>Aba Tarifas</h3>
-          <label>Valor da hora (R$)<input defaultValue="12" /></label>
-          <label>Minutos de tolerância<input defaultValue="10" /></label>
-          <button className="success-button mini">Salvar</button>
+          <label className="field"><span>Valor da hora (R$)</span><input value={valorHora} onChange={e => setValorHora(e.target.value)} type="number" min="0" step="0.01" /></label>
+          <label className="field"><span>Minutos de tolerância</span><input value={tolerancia} onChange={e => setTolerancia(e.target.value)} type="number" min="0" /></label>
+          <button className="btn btn-primary" onClick={salvar}>Salvar</button>
         </section>
       </div>
-    </div>
+    </section>
   );
 }
