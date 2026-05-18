@@ -6,9 +6,8 @@
 .login-page {
   min-height: 100vh;
   width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
   padding: 24px;
   background: var(--bg);
   position: relative;
@@ -62,16 +61,14 @@
 .login-card {
   position: relative;
   z-index: 1;
-  width: 100%;
-  max-width: 400px;
+  width: min(420px, calc(100vw - 48px));
   background: var(--panel);
   border: 1px solid var(--line-md);
   border-radius: var(--radius);
-  padding: 36px 32px;
+  padding: 40px 36px;
   box-shadow: var(--shadow-lg);
-  animation: loginReveal 0.5s var(--ease) both;
+  animation: loginReveal 0.55s var(--ease) both;
 }
-
 /* Linha laranja no topo do card */
 .login-card::before {
   content: '';
@@ -346,7 +343,17 @@ html[data-theme="light"] {
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html, body, #root { min-height: 100%; }
+html,
+body,
+#root {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+}
+
+#root {
+  min-height: 100vh;
+}
 body {
   font-family: 'Outfit', ui-sans-serif, system-ui, sans-serif;
   background: var(--bg);

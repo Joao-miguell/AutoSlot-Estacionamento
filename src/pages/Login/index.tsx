@@ -54,8 +54,8 @@ export default function Login() {
         </button>
       </div>
 
-      <div className="login-wrapper">
-        <div className="login-card">
+      <main className="login-page">
+  <section className="login-card">
           {/* Logo + Header */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 28 }}>
             <img
@@ -159,8 +159,8 @@ export default function Login() {
               Func · func@estacionamento.com / func123
             </button>
           </div>
-        </div>
-      </div>
+        </section>
+      </main>
     </>
   );
 }
