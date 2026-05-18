@@ -11,6 +11,28 @@ const statusClass: Record<ParkingSpot['status'], string> = {
   Inativa: 'inactive'
 };
 
+function formatarPlaca(valor: string) {
+  const limpo = valor
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '')
+    .slice(0, 7);
+
+  const letras = limpo.slice(0, 3).replace(/[^A-Z]/g, '');
+  const numeros = limpo.slice(3).replace(/[^0-9]/g, '').slice(0, 4);
+
+  if (letras.length <= 2) return letras;
+  return numeros ? `${letras}-${numeros}` : `${letras}-`;
+}
+
+function placaValida(placa: string) {
+  return /^[A-Z]{3}-\d{4}$/.test(placa);
+}
+
+function nomeCompletoValido(nome: string) {
+  const partes = nome.trim().split(/\s+/);
+  return partes.length >= 2 && partes.every(parte => parte.length >= 2);
+}
+
 export default function Dashboard() {
   const { vagas, metricas, reservar, marcarChegada, cancelarReservaExpirada, finalizarPagamento, calcularTempo, calcularValor } = useParking();
   const [busca, setBusca] = useState('');
@@ -60,15 +82,36 @@ export default function Dashboard() {
   };
 
   const confirmarReserva = () => {
-    if (!form.placa.trim()) {
+    const cliente = form.cliente.trim();
+    const placa = form.placa.trim().toUpperCase();
+
+    if (!nomeCompletoValido(cliente)) {
+      setErroReserva('Informe nome e sobrenome do cliente. Ex.: João Silva.');
+      return;
+    }
+
+    if (!placa) {
       setErroReserva('A placa do veículo é obrigatória.');
       return;
     }
+
+    if (!placaValida(placa)) {
+      setErroReserva('A placa deve seguir o formato ABC-1234.');
+      return;
+    }
+
     if (!form.vagaId) {
       setErroReserva('Selecione uma vaga livre.');
       return;
     }
-    reservar(form);
+
+    reservar({
+      ...form,
+      cliente,
+      placa
+    });
+
+    setErroReserva('');
     setModal(null);
   };
 
@@ -130,8 +173,28 @@ export default function Dashboard() {
       {modal === 'reserva' && (
         <Modal title="Nova Reserva" subtitle="Somente vagas livres podem ser selecionadas." onClose={() => setModal(null)}>
           <div className="row row-2">
-            <Field label="Nome do cliente"><input value={form.cliente} onChange={e => setForm({ ...form, cliente: e.target.value })} placeholder="Ex.: João Silva" /></Field>
-            <Field label="Placa do veículo *"><input value={form.placa} onChange={e => setForm({ ...form, placa: e.target.value.toUpperCase() })} placeholder="ABC-1234" /></Field>
+            <Field label="Nome completo do cliente *">
+              <input
+                value={form.cliente}
+                onChange={e => {
+                  setForm({ ...form, cliente: e.target.value });
+                  setErroReserva('');
+                }}
+                placeholder="Ex.: João Silva"
+              />
+            </Field>
+            <Field label="Placa do veículo *">
+              <input
+                value={form.placa}
+                onChange={e => {
+                  const placaFormatada = formatarPlaca(e.target.value);
+                  setForm({ ...form, placa: placaFormatada });
+                  setErroReserva('');
+                }}
+                placeholder="ABC-1234"
+                maxLength={8}
+              />
+            </Field>
             <Field label="Modelo do veículo"><input value={form.modelo} onChange={e => setForm({ ...form, modelo: e.target.value })} placeholder="Ex.: Onix" /></Field>
             <Field label="Horário de entrada"><input type="datetime-local" value={form.entrada} onChange={e => setForm({ ...form, entrada: e.target.value })} /></Field>
             <Field label="Horário previsto de saída"><input type="datetime-local" value={form.saidaPrevista} onChange={e => setForm({ ...form, saidaPrevista: e.target.value })} /></Field>
